@@ -1,81 +1,78 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-# More info on Python, GitHub Actions, and Azure App Service: https://aka.ms/python-webapps-actions
+# Nome do workflow que identifica este processo no GitHub Actions
+name: Build and deploy Python app to Azure Web App - felipe-engenharia-software
 
-name: Build and deploy Python app to Azure Web App - Mackenzie
-
+# Define os gatilhos (eventos) que iniciam o pipeline
 on:
+  # Dispara o pipeline sempre que houver um push na branch 'main'
   push:
     branches:
       - main
+  # Permite disparar o pipeline manualmente pela interface do GitHub
   workflow_dispatch:
 
+# Define os trabalhos (etapas principais) que o pipeline vai executar
 jobs:
+  # Primeiro trabalho: Construção (Build) do ambiente
   build:
+    # Especifica que o trabalho rodará em uma máquina virtual com Linux Ubuntu
     runs-on: ubuntu-latest
+    # Permissões necessárias para que o GitHub consiga ler o conteúdo do repositório
     permissions:
-      contents: read #This is required for actions/checkout
+      contents: read
 
     steps:
+      # Passo 1: Copia os arquivos do repositório para a máquina virtual do GitHub
       - uses: actions/checkout@v4
 
+      # --- NOVO STEP DO EXERCÍCIO 3 ---
+      # Passo 2: Imprime uma mensagem de confirmação no console antes de iniciar
+      - name: Mensagem Inicial do Exercício 3
+        run: echo "Iniciando o deploy do meu projeto!"
+
+      # Passo 3: Configura a versão do Python 3.12 na máquina de build
       - name: Set up Python version
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: '3.12'
 
-      - name: Create and start virtual environment
+      # Passo 4: Cria o ambiente virtual e instala as dependências (flask, gunicorn, etc)
+      - name: Create and Start virtual environment and Install dependencies
         run: |
-          python -m venv venv
-          source venv/bin/activate
-      
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-        
-      # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
-
-      - name: Zip artifact for deployment
-        run: zip release.zip ./* -r
-
+          python -m venv antenv
+          source antenv/bin/activate
+          pip install -r requirements.txt
+                
+      # Passo 5: Salva os arquivos do projeto como um "artefato" para serem usados no deploy
+      # O sinal '!' exclui a pasta do ambiente virtual para o arquivo não ficar pesado
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
         with:
           name: python-app
           path: |
-            release.zip
-            !venv/
+            .
+            !antenv/
 
+  # Segundo trabalho: Implantação (Deploy) no servidor da Azure
   deploy:
+    # Define que rodará no Linux e depende do sucesso do job de build acima
     runs-on: ubuntu-latest
     needs: build
-    environment:
-      name: 'Production'
-      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
-    permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
-
+    
     steps:
+      # Passo 1: Recupera os arquivos que foram salvos e compactados no job de build
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: python-app
-
-      - name: Unzip artifact for deployment
-        run: unzip release.zip
-
       
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_2625D0D765264B67BA91D0B4647EA8EC }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_355ECC283CC243B3B0F8BB24D1E138D7 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_638D89F46DA9483BB845CE8FB6E9CCA0 }}
-
+      # Passo 2: Faz o envio definitivo para o serviço de hospedagem da Azure
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
         id: deploy-to-webapp
         with:
-          app-name: 'Mackenzie'
+          # Nome do servidor destino na sua conta Azure
+          app-name: 'felipe-engenharia-software'
+          # Define o ambiente de produção
           slot-name: 'Production'
-          
+          # Chave de segurança automática usada para autorizar o acesso à Azure
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_4A96652586054214AFFF366C938E32E0 }}
